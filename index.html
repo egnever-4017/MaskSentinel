@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>影哨 MaskSentinel · 面向实时通信的深度伪造检测系统</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="影哨 MaskSentinel">
+        <span aria-hidden="true">哨</span>
+        <span class="brand-text">
+          <strong>影哨</strong>
+          <em>MaskSentinel</em>
+        </span>
+      </a>
+      <nav aria-label="页面导航">
+        <a href="#threat">威胁</a>
+        <a href="#solution">方案</a>
+        <a href="#architecture">架构</a>
+        <a href="#results">实测</a>
+        <a href="#scenes">场景</a>
+      </nav>
+      <button class="header-login" id="loginBtn">登录</button>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">面向实时通信的深度伪造检测系统</p>
+          <h1 class="brand-title">影哨 <span>MaskSentinel</span></h1>
+          <p class="hero-tagline">让每一次视频通话，都能被验证</p>
+          <p class="lead">
+            以第三方守护进程的形式覆盖腾讯会议、微信视频通话、Telegram 等主流通讯软件，
+            在本地实时分析画面，单帧推理时延低于 100ms，输出可解释的伪造置信度与告警留痕。
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#" id="enterAppBtn">进入实时检测台</a>
+            <a class="button secondary" href="#architecture">了解 LECTF-NET</a>
+          </div>
+          <dl class="metrics" aria-label="核心指标">
+            <div>
+              <dt>98.6<small>%</small></dt>
+              <dd>FF++ RAW<br />检测准确率</dd>
+            </div>
+            <div>
+              <dt>4.1<small>M</small></dt>
+              <dd>模型参数量<br />轻量化部署</dd>
+            </div>
+            <div>
+              <dt>355<small>FPS</small></dt>
+              <dd>桌面端<br />持续吞吐</dd>
+            </div>
+            <div>
+              <dt>&lt;100<small>ms</small></dt>
+              <dd>单帧<br />检测时延</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="band threat" id="threat">
+        <div class="band-grid">
+          <div>
+            <p class="eyebrow alt">真实事件</p>
+            <h2>2024 年香港 2 亿港元<br />AI 换脸视频会议诈骗案</h2>
+            <p class="band-lead">
+              诈骗分子利用公开资料制作 CFO 等高管的深度伪造影像与声音，在一次多人视频会议中诱导财务在
+              短短数小时内执行 15 笔转账，金额累计 2 亿港元。事后香港警方确认，受害者之外的所有与会者
+              均为深度伪造的虚拟人物。
+            </p>
+            <p class="band-footnote">数据来源 · 央视新闻、香港警务处通报 · 2024 年 2 月</p>
+          </div>
+          <ul class="threat-stats">
+            <li>
+              <strong>¥2 亿<small>港元</small></strong>
+              <span>单案损失金额</span>
+            </li>
+            <li>
+              <strong>15<small>笔</small></strong>
+              <span>会议中诱导的转账</span>
+            </li>
+            <li>
+              <strong>数小时</strong>
+              <span>从入会到被骗的时间</span>
+            </li>
+            <li>
+              <strong>0<small>款</small></strong>
+              <span>主流通讯软件自带的实时检测</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section" id="why">
+        <div class="section-head">
+          <p class="eyebrow">问题定义</p>
+          <h2>现有检测方法<br />难以满足实时通信场景</h2>
+        </div>
+        <div class="three-col">
+          <article>
+            <span class="num">01</span>
+            <h3>实时性不足</h3>
+            <p>多数现有方法面向离线视频，处理一帧需数百毫秒，无法在视频会议、直播流中给出即时反馈。</p>
+          </article>
+          <article>
+            <span class="num">02</span>
+            <h3>体量过大</h3>
+            <p>主流伪造检测网络参数量动辄 20M+、FLOPs 6G+，难以部署到桌面端常驻进程或资源受限的边缘设备。</p>
+          </article>
+          <article>
+            <span class="num">03</span>
+            <h3>鲁棒性差</h3>
+            <p>真实通讯软件普遍走 H.264 / HEVC 强压缩。已有方法在 C40 等强压缩下准确率显著下滑。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="solution">
+        <div class="section-head">
+          <p class="eyebrow">系统方案</p>
+          <h2>以第三方插件形态<br />覆盖现有通讯软件</h2>
+        </div>
+        <ol class="pipeline">
+          <li>
+            <span class="step">01</span>
+            <h3>选定通讯软件</h3>
+            <p>用户在主界面勾选当前需要保护的应用：腾讯会议、微信视频通话、Telegram。</p>
+          </li>
+          <li>
+            <span class="step">02</span>
+            <h3>抓取通话画面</h3>
+            <p>基于 Window Handle 精确捕获目标窗口的视频帧，无需修改任何通讯软件。</p>
+          </li>
+          <li>
+            <span class="step">03</span>
+            <h3>双队列调度</h3>
+            <p>等待队列缓存最新 50 帧；检测队列每轮抽取 10 帧批量推理，平衡 GPU 利用率与响应抖动。</p>
+          </li>
+          <li>
+            <span class="step">04</span>
+            <h3>LECTF-NET 推理</h3>
+            <p>多分支信息交互网络融合空间、梯度、频域特征，输出每帧伪造置信度。</p>
+          </li>
+          <li>
+            <span class="step">05</span>
+            <h3>滑动告警留痕</h3>
+            <p>连续多帧伪造置信度稳定超阈值才触发弹窗，平均告警响应 4.9s，并保留检测日志供溯源。</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section dark" id="architecture">
+        <div class="section-head light">
+          <p class="eyebrow">核心技术</p>
+          <h2>LECTF-NET<br />轻量级三分支信息交互网络</h2>
+          <p class="section-sub">
+            Light Weight Efficient Cross Attention Triple Fusion Net ·
+            参数量 4.1M · FLOPs 864M · FF++ RAW 98.6%
+          </p>
+        </div>
+
+        <div class="arch">
+          <div class="arch-stage">
+            <span class="stage-tag">① 输入</span>
+            <div class="stage-input-card">
+              <strong>代表帧</strong>
+              <em>滑动窗口采样 + MOR / EAR 锚点评分，挑出情感波动最大的关键帧。</em>
+            </div>
+          </div>
+
+          <div class="arch-link link-fan" aria-hidden="true"></div>
+
+          <div class="arch-stage">
+            <span class="stage-tag">② 三分支并行特征提取</span>
+            <div class="arch-branches">
+              <article class="branch b-grad">
+                <header><small>Gradient Branch</small><h3>梯度分支</h3></header>
+                <p>Sobel 算子提取水平/垂直梯度图 <em>P=√(G<sub>x</sub>²+G<sub>y</sub>²)</em>，揭示伪造引入的边缘伪影与轮廓畸变。</p>
+                <span class="branch-tag">边缘 · 轮廓</span>
+              </article>
+              <article class="branch b-spatial">
+                <header><small>Spatial Branch · 主干</small><h3>空间分支</h3></header>
+                <p>EfficientNet-b0 提取空间纹理 F<sub>spatial</sub>，GAP + 线性降维聚合为 16 维面部几何特征。</p>
+                <span class="branch-tag">面部几何 · 纹理</span>
+              </article>
+              <article class="branch b-freq">
+                <header><small>Frequency Branch</small><h3>频域分支</h3></header>
+                <p>对人脸区域做 DCT 离散余弦变换，分离高频成分以识别压缩域下的伪造痕迹。</p>
+                <span class="branch-tag">DCT · 高频伪影</span>
+              </article>
+            </div>
+          </div>
+
+          <div class="arch-link link-merge" aria-hidden="true"></div>
+
+          <div class="arch-stage">
+            <span class="stage-tag">③ 跨分支信息融合</span>
+            <div class="stage-cross-card">
+              <div>
+                <h4>跨分支注意力 · Branch Cross Attention</h4>
+                <p>RGB 主分支与梯度、频域子分支之间进行多向 Q-K-V 注意力对齐，配合门控 FFN 与 LayerNorm 实现深度融合。</p>
+              </div>
+              <ul class="cross-formula">
+                <li><em>Q<sub>S</sub> = S<sub>q</sub>·W<sub>Q</sub><sup>S</sup></em></li>
+                <li><em>α = softmax(Q·K<sup>T</sup> / √d<sub>h</sub>)</em></li>
+                <li><em>S′ = LayerNorm(S<sub>q</sub> + Dropout(S̃))</em></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="arch-link" aria-hidden="true"></div>
+
+          <div class="arch-stage">
+            <span class="stage-tag">④ 分类决策头</span>
+            <div class="arch-tail">
+              <div class="tail-step">SEBlock<br /><em>通道加权</em></div>
+              <span class="tail-arrow">→</span>
+              <div class="tail-step">FC + ReLU<br /><em>特征映射</em></div>
+              <span class="tail-arrow">→</span>
+              <div class="tail-step out">Softmax<br /><em>Real / Fake 二分类</em></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-feats">
+          <div class="arch-feats-head">
+            <h3>训练与<br />推理优化</h3>
+            <p>Training Strategies</p>
+          </div>
+          <div class="arch-feats-list">
+            <article>
+              <h4>代表帧提取</h4>
+              <p>滑动窗口 + 均匀随机采样组合，对每帧打 MOR / EAR 综合得分 <em>score = β·MOR + (1−β)·(1−EAR)</em>，挑出情感波动最大的代表帧送检。</p>
+            </article>
+            <article>
+              <h4>分支冻结训练</h4>
+              <p>训练初期冻结空间分支，让梯度与频域分支专注学习互补特征，再解冻全网联合微调，显著加速收敛。</p>
+            </article>
+            <article>
+              <h4>类平衡 + Focal Loss</h4>
+              <p>WeightedRandomSampler 抵消正负样本不平衡，Focal Loss <em>−α(1−p)<sup>γ</sup>log p</em> 让模型聚焦难样本。</p>
+            </article>
+            <article>
+              <h4>混合精度训练</h4>
+              <p>FP16 前向反传 + FP32 权重更新，在保持数值稳定的同时降低显存与训练时间。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="results">
+        <div class="section-head">
+          <p class="eyebrow">实测数据</p>
+          <h2>跨压缩等级 / 跨数据集<br />同时领先</h2>
+        </div>
+
+        <div class="result-block">
+          <h3>FaceForensics++ 在不同压缩等级下的检测准确率</h3>
+          <p class="result-cap">在强压缩 C40 条件下，LECTF 仍领先 XceptionNet、FPC-Net、LRNet 等主流方案。</p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>压缩等级</th>
+                  <th class="ours">LECTF<small>（Ours）</small></th>
+                  <th>XceptionNet</th>
+                  <th>FPC-Net</th>
+                  <th>LRNet</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><th>原始 RAW</th><td class="ours"><strong>98.6%</strong></td><td>97.8%</td><td>96.5%</td><td>98.5%</td></tr>
+                <tr><th>中压缩 C23</th><td class="ours"><strong>94.2%</strong></td><td>92.6%</td><td>90.0%</td><td>93.8%</td></tr>
+                <tr><th>强压缩 C40</th><td class="ours"><strong>90.7%</strong></td><td>88.3%</td><td>85.4%</td><td>89.2%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="result-twin">
+          <div class="result-block">
+            <h3>跨数据集泛化 · 在 FF++ 训练，于 CelebDF 评估</h3>
+            <p class="result-cap">LECTF 以 4.1M 参数量在跨数据集任务上反超 20M+ 的大模型，说明其学到的是真伪造证据而非数据集偏置。</p>
+            <ul class="bar-list">
+              <li class="b-ours">
+                <span class="bn">LECTF <em>（Ours, 4.1M）</em></span>
+                <span class="bbar" style="--w:71.6%"><i></i><b>71.6%</b></span>
+              </li>
+              <li>
+                <span class="bn">GocNet <em>（28.71M）</em></span>
+                <span class="bbar" style="--w:67.4%"><i></i><b>67.4%</b></span>
+              </li>
+              <li>
+                <span class="bn">LDFnet <em>（963K）</em></span>
+                <span class="bbar" style="--w:65.7%"><i></i><b>65.7%</b></span>
+              </li>
+              <li>
+                <span class="bn">Xception-LQ <em>（20.81M）</em></span>
+                <span class="bbar" style="--w:65.5%"><i></i><b>65.5%</b></span>
+              </li>
+              <li>
+                <span class="bn">DefakeHop++</span>
+                <span class="bbar" style="--w:60.5%"><i></i><b>60.5%</b></span>
+              </li>
+              <li>
+                <span class="bn">MesoInception</span>
+                <span class="bbar" style="--w:53.6%"><i></i><b>53.6%</b></span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="result-block">
+            <h3>真实通讯平台实测 · 弹窗响应与准确率</h3>
+            <p class="result-cap">在三类主流通讯软件中，平均弹窗响应 4.50–5.25s，检测准确率稳定保持在 97% 以上。</p>
+            <div class="table-wrap">
+              <table class="data-table compact">
+                <thead>
+                  <tr><th>测试平台</th><th>弹窗响应</th><th>准确率</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th>腾讯会议</th><td>4.50 – 5.25 s</td><td><strong>97.5 – 98.6%</strong></td></tr>
+                  <tr><th>微信视频通话</th><td>4.66 – 5.10 s</td><td><strong>97.3 – 98.2%</strong></td></tr>
+                  <tr><th>Telegram 视频</th><td>4.60 – 5.13 s</td><td><strong>97.2 – 98.4%</strong></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-strip">
+          <article>
+            <strong>4.1M</strong>
+            <span>参数量 · 比 XceptionNet 减少 80.3%</span>
+          </article>
+          <article>
+            <strong>864M</strong>
+            <span>FLOPs · 比主流方案降低 85.6%</span>
+          </article>
+          <article>
+            <strong>355 FPS</strong>
+            <span>桌面端持续推理吞吐</span>
+          </article>
+          <article>
+            <strong>99.99%</strong>
+            <span>HFF 数据集 AUC</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="scenes">
+        <div class="section-head">
+          <p class="eyebrow">应用场景</p>
+          <h2>需要可信视频身份的<br />四类高风险场景</h2>
+        </div>
+        <div class="scene-grid">
+          <article>
+            <span class="scene-num">⚖</span>
+            <h3>司法视频鉴定</h3>
+            <p>辅助法院核验视频材料真实性，避免基于 Deepfake 制造的伪证、虚假口供进入证据链。</p>
+          </article>
+          <article>
+            <span class="scene-num">🏛</span>
+            <h3>金融远程审批</h3>
+            <p>降低视频会议中冒名高管下达转账、远程开户、合同签署等场景的诈骗风险。</p>
+          </article>
+          <article>
+            <span class="scene-num">📡</span>
+            <h3>直播内容审核</h3>
+            <p>在直播流中实时识别 AI 换脸主播、深度伪造代言，为平台提供机审入口。</p>
+          </article>
+          <article>
+            <span class="scene-num">🛡</span>
+            <h3>社交账号与品牌保护</h3>
+            <p>识别伪造代言、虚假发声与冒名带货，帮助企业和公众人物维护数字身份。</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-foot">
+      <div>
+        <strong>影哨 · MaskSentinel</strong>
+        <span>实时深度伪造检测第三方软件</span>
+      </div>
+      <div class="foot-meta">
+        <span>LECTF-NET · 4.1M 参数 · 单帧 &lt;100ms</span>
+      </div>
+    </footer>
+
+    <!-- ===== 登录弹窗 ===== -->
+    <div class="auth-modal" id="loginModal" hidden>
+      <div class="auth-backdrop" data-close></div>
+      <form class="auth-card" id="loginForm" autocomplete="off">
+        <button type="button" class="auth-x" data-close aria-label="关闭">×</button>
+        <div class="auth-brand"><span>哨</span><strong>影哨 MaskSentinel</strong></div>
+        <h3>登录工作台</h3>
+        <p class="auth-sub">实时深度伪造检测控制台</p>
+        <label>用户名
+          <input id="authUser" type="text" placeholder="请输入用户名" />
+        </label>
+        <label>密码
+          <input id="authPass" type="password" placeholder="请输入密码" />
+        </label>
+        <p class="auth-err" id="authErr" hidden>用户名或密码错误，请重试</p>
+        <button type="submit" class="auth-submit">登 录</button>
+      </form>
+    </div>
+
+    <!-- ===== 工作台（登录后） ===== -->
+    <div class="app is-fake is-running" id="app" hidden>
+      <header class="app-bar">
+        <div class="app-brand"><span>哨</span>影哨<em>· 实时检测工作台</em></div>
+        <span class="app-status"><i></i><b>实时监控中</b></span>
+        <div class="app-user">
+          <span class="user-chip"><i>A</i>admin</span>
+          <button class="app-logout" id="logoutBtn">退出登录</button>
+        </div>
+      </header>
+
+      <div class="app-body">
+        <!-- 左侧扩展控制区 -->
+        <aside class="app-rail">
+          <div class="rail-block">
+            <h4>检测平台</h4>
+            <div class="rail-platforms">
+              <button class="plat active" data-plat="腾讯会议">腾讯会议</button>
+              <button class="plat" data-plat="微信视频通话">微信视频通话</button>
+              <button class="plat" data-plat="Telegram">Telegram</button>
+            </div>
+          </div>
+          <div class="rail-block">
+            <h4>检测帧率</h4>
+            <div class="rail-fps">
+              <button class="fps">10</button>
+              <button class="fps">20</button>
+              <button class="fps active">30</button>
+              <button class="fps">60</button>
+            </div>
+          </div>
+          <div class="rail-block">
+            <h4>演示样本</h4>
+            <div class="rail-sample">
+              <button class="samp" data-sample="real">真实通话样本</button>
+              <button class="samp active" data-sample="fake">伪造换脸样本</button>
+            </div>
+          </div>
+          <button class="rail-run" id="runBtn">■ 停止检测</button>
+          <div class="rail-block rail-sessions">
+            <h4>监控会话</h4>
+            <ul>
+              <li><i></i>财务部周例会<span>正常</span></li>
+              <li class="warn"><i></i>陌生来电 #1182<span>伪造</span></li>
+              <li><i></i>客户验收对接<span>正常</span></li>
+              <li><i></i>远程面试 候选人A<span>正常</span></li>
+            </ul>
+          </div>
+        </aside>
+
+        <!-- 中央监控 + 日志 -->
+        <main class="app-monitor">
+          <div class="demo-shell">
+            <div class="demo-chrome">
+              <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
+              <span class="chrome-title">MaskSentinel · Live Inspection</span>
+              <span class="chrome-status"><i class="live-dot"></i> Live</span>
+            </div>
+            <div class="demo-body">
+              <div class="canvas" aria-hidden="true">
+                <div class="canvas-noise"></div>
+                <div class="canvas-grid"></div>
+                <div class="canvas-meta-tl">
+                  <span id="stagePlat">🛰 腾讯会议</span>
+                  <span id="stageFps">30 FPS</span>
+                  <span>21:48:07</span>
+                </div>
+                <div class="canvas-meta-tr">
+                  <span class="rec"><i></i> REC</span>
+                </div>
+                <div class="face-box">
+                  <img class="face-img" src="assets/head.png" alt="" aria-hidden="true" />
+                  <span class="corner tl"></span><span class="corner tr"></span>
+                  <span class="corner bl"></span><span class="corner br"></span>
+                  <div class="heatmap heat-eyes"></div>
+                  <div class="heatmap heat-mouth"></div>
+                  <div class="scanline"></div>
+                  <span class="box-label">面部追踪 · 68 关键点</span>
+                </div>
+                <div class="alert-tag">
+                  <span class="alert-title">FAKE DETECTED</span>
+                  <span class="alert-meta">置信度 0.874 · 阈值 0.50</span>
+                </div>
+              </div>
+
+              <div class="readout">
+                <div class="readout-row verdict">
+                  <span class="rlabel">检测结果</span>
+                  <strong class="vfake" id="appVerdict">伪造</strong>
+                </div>
+                <div class="readout-chart">
+                  <div class="chart-head"><span>伪造置信度时序</span><em>近 30s</em></div>
+                  <svg viewBox="0 0 240 70" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="cfFake" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#df3f2f" stop-opacity="0.45" />
+                        <stop offset="100%" stop-color="#df3f2f" stop-opacity="0" />
+                      </linearGradient>
+                      <linearGradient id="cfReal" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stop-color="#0b6b5e" stop-opacity="0.5" />
+                        <stop offset="100%" stop-color="#0b6b5e" stop-opacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <line x1="0" y1="35" x2="240" y2="35" stroke="rgba(255,255,255,0.18)" stroke-dasharray="3 4" />
+                    <g class="chart-fake">
+                      <path d="M0,46 L8,42 L16,38 L24,30 L32,28 L40,32 L48,22 L56,18 L64,24 L72,16 L80,12 L88,14 L96,10 L104,16 L112,12 L120,8 L128,14 L136,10 L144,16 L152,12 L160,18 L168,14 L176,10 L184,14 L192,12 L200,16 L208,12 L216,14 L224,10 L232,12 L240,14 L240,70 L0,70 Z" fill="url(#cfFake)" />
+                      <polyline points="0,46 8,42 16,38 24,30 32,28 40,32 48,22 56,18 64,24 72,16 80,12 88,14 96,10 104,16 112,12 120,8 128,14 136,10 144,16 152,12 160,18 168,14 176,10 184,14 192,12 200,16 208,12 216,14 224,10 232,12 240,14" fill="none" stroke="#df3f2f" stroke-width="1.5" stroke-linejoin="round" />
+                    </g>
+                    <g class="chart-real">
+                      <path d="M0,57 L16,55 L32,58 L48,56 L64,59 L80,55 L96,57 L112,56 L128,58 L144,55 L160,57 L176,56 L192,58 L208,55 L224,57 L240,56 L240,70 L0,70 Z" fill="url(#cfReal)" />
+                      <polyline points="0,57 16,55 32,58 48,56 64,59 80,55 96,57 112,56 128,58 144,55 160,57 176,56 192,58 208,55 224,57 240,56" fill="none" stroke="#62f0c8" stroke-width="1.5" stroke-linejoin="round" />
+                    </g>
+                    <text x="2" y="10" fill="rgba(255,255,255,0.5)" font-size="7">1.0</text>
+                    <text x="2" y="38" fill="rgba(255,255,255,0.5)" font-size="7">0.5</text>
+                    <text x="2" y="67" fill="rgba(255,255,255,0.5)" font-size="7">0.0</text>
+                  </svg>
+                </div>
+                <dl class="readout-grid">
+                  <div><dt>当前置信度</dt><dd id="appConfNow">0.874</dd></div>
+                  <div><dt>平均置信度</dt><dd id="appConfAvg">0.84 <em>±0.05</em></dd></div>
+                  <div><dt>单帧耗时</dt><dd>0.11<em>s</em></dd></div>
+                  <div><dt>检测模型</dt><dd>LECTF-Net</dd></div>
+                </dl>
+                <div class="readout-foot">
+                  <span class="chip" id="appLogChip">告警已留痕</span>
+                  <span class="chip ghost">日志 #A-2104</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="film-wrap">
+            <span class="film-label">代表帧采样</span>
+            <div class="filmstrip">
+              <div class="fr"></div><div class="fr"></div><div class="fr key"></div><div class="fr"></div><div class="fr"></div><div class="fr"></div><div class="fr"></div>
+            </div>
+          </div>
+
+          <section class="app-log">
+            <div class="log-head"><h4>检测日志</h4><span>实时写入 · 仅本机留存</span></div>
+            <div class="table-wrap">
+              <table class="data-table compact">
+                <thead>
+                  <tr><th>时间</th><th>平台</th><th>检测帧</th><th>置信度</th><th>结论</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>21:48:07</td><td>腾讯会议</td><td>#A-2104</td><td>0.874</td><td><b class="t-fake">伪造</b></td></tr>
+                  <tr><td>21:47:52</td><td>腾讯会议</td><td>#A-2098</td><td>0.862</td><td><b class="t-fake">伪造</b></td></tr>
+                  <tr><td>21:46:10</td><td>微信视频通话</td><td>#A-2071</td><td>0.193</td><td><b class="t-real">真实</b></td></tr>
+                  <tr><td>21:43:38</td><td>Telegram</td><td>#A-2044</td><td>0.207</td><td><b class="t-real">真实</b></td></tr>
+                  <tr><td>21:41:05</td><td>腾讯会议</td><td>#A-2010</td><td>0.901</td><td><b class="t-fake">伪造</b></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const $ = (s) => document.querySelector(s);
+        const modal = $("#loginModal");
+        const app = $("#app");
+
+        const openLogin = () => {
+          modal.hidden = false;
+          $("#authUser").focus();
+        };
+        const closeLogin = () => {
+          modal.hidden = true;
+          $("#authErr").hidden = true;
+        };
+
+        $("#loginBtn").addEventListener("click", openLogin);
+        const enterBtn = $("#enterAppBtn");
+        if (enterBtn) enterBtn.addEventListener("click", (e) => { e.preventDefault(); openLogin(); });
+        modal.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", closeLogin));
+
+        $("#loginForm").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const u = $("#authUser").value.trim();
+          const p = $("#authPass").value.trim();
+          if (u === "admin" && p === "admin") {
+            closeLogin();
+            app.hidden = false;
+            app.scrollTop = 0;
+            document.body.style.overflow = "hidden";
+          } else {
+            const err = $("#authErr");
+            err.hidden = false;
+            const card = $("#loginForm");
+            card.classList.remove("shake");
+            void card.offsetWidth;
+            card.classList.add("shake");
+          }
+        });
+
+        $("#logoutBtn").addEventListener("click", () => {
+          app.hidden = true;
+          document.body.style.overflow = "";
+          $("#authPass").value = "";
+        });
+
+        // 平台切换
+        app.querySelectorAll(".plat").forEach((b) =>
+          b.addEventListener("click", () => {
+            app.querySelectorAll(".plat").forEach((x) => x.classList.remove("active"));
+            b.classList.add("active");
+            $("#stagePlat").textContent = "🛰 " + b.dataset.plat;
+          })
+        );
+
+        // 帧率切换
+        app.querySelectorAll(".fps").forEach((b) =>
+          b.addEventListener("click", () => {
+            app.querySelectorAll(".fps").forEach((x) => x.classList.remove("active"));
+            b.classList.add("active");
+            $("#stageFps").textContent = b.textContent + " FPS";
+          })
+        );
+
+        // 真实 / 伪造样本切换
+        const v = $("#appVerdict");
+        const cn = $("#appConfNow");
+        const ca = $("#appConfAvg");
+        const chip = $("#appLogChip");
+        app.querySelectorAll(".samp").forEach((b) =>
+          b.addEventListener("click", () => {
+            app.querySelectorAll(".samp").forEach((x) => x.classList.remove("active"));
+            b.classList.add("active");
+            if (b.dataset.sample === "real") {
+              app.classList.remove("is-fake");
+              app.classList.add("is-real");
+              v.textContent = "真实";
+              v.classList.remove("vfake");
+              v.classList.add("vreal");
+              cn.textContent = "0.21";
+              ca.innerHTML = '0.19 <em>±0.04</em>';
+              chip.textContent = "未触发告警";
+            } else {
+              app.classList.remove("is-real");
+              app.classList.add("is-fake");
+              v.textContent = "伪造";
+              v.classList.remove("vreal");
+              v.classList.add("vfake");
+              cn.textContent = "0.874";
+              ca.innerHTML = '0.84 <em>±0.05</em>';
+              chip.textContent = "告警已留痕";
+            }
+          })
+        );
+
+        // 开始 / 停止检测
+        $("#runBtn").addEventListener("click", () => {
+          const on = app.classList.toggle("is-running");
+          $("#runBtn").textContent = on ? "■ 停止检测" : "▶ 开始检测";
+        });
+      })();
+    </script>
+  </body>
+</html>
